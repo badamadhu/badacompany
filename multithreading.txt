@@ -1,0 +1,392 @@
+Explanation
+
+Multithreading allows multiple threads to execute concurrently within the same process.
+
+Each thread:
+
+Shares the same process memory (heap, global variables, etc.).
+Has its own stack and CPU registers.
+Can run independently, improving responsiveness and utilizing multiple CPU cores.
+
+
+
+
+Explanation
+A std::mutex (mutual exclusion) is used to ensure that only one thread at a time can access a shared resource. This prevents data races and keeps shared data consistent.
+
+
+
+
+
+
+What problem can occur if two threads access the same variable simultaneously, and at least one thread modifies it without synchronization?
+✅ Correct Answer: C. Data Race
+
+Explanation
+
+A data race occurs when:
+
+Two or more threads access the same memory location simultaneously.
+At least one thread writes to that memory.
+There is no synchronization (e.g., no std::mutex).
+
+This leads to undefined behavior.
+
+
+
+
+Which C++ class provides automatic locking and unlocking of a mutex using RAII?
+✅ Correct! B. std::lock_guard is the right answer.
+
+Explanation
+
+std::lock_guard is an RAII (Resource Acquisition Is Initialization) wrapper that:
+
+✅ Locks the mutex when the lock_guard is created.
+✅ Automatically unlocks the mutex when the lock_guard goes out of scope.
+
+This ensures the mutex is always released, even if an exception is thrown.
+
+
+
+
+Why is lock_guard better than lock()/unlock()?
+
+❌ Manual locking:
+
+mtx.lock();
+doSomething();
+// If an exception occurs here...
+mtx.unlock();   // Never reached
+
+The mutex remains locked, potentially causing deadlocks.
+
+✅ RAII:
+
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    doSomething();
+} // Mutex is automatically unlocked here
+
+
+
+
+How to fix it?
+Option 1: Use std::mutex
+std::mutex mtx;
+
+void fun() {
+    for (int i = 0; i < 100000; i++) {
+        std::lock_guard<std::mutex> lock(mtx);
+        x++;
+    }
+}
+Option 2: Use std::atomic<int>
+#include <atomic>
+
+std::atomic<int> x{0};
+
+void fun() {
+    for (int i = 0; i < 100000; i++)
+        x++;
+}
+Use:
+
+std::atomic for simple atomic operations.
+std::mutex when protecting more complex shared state.
+
+
+
+
+
+Which of the following statements about std::atomic<int> is correct?
+✅ Correct Answer: B. It makes individual operations like ++, --, and load() atomic.
+
+Explanation
+
+std::atomic<T> guarantees that individual operations on the atomic variable are performed atomically.
+
+
+
+
+
+std::this_thread::get_id();        // Current thread ID
+std::this_thread::sleep_for(...);  // Sleep current thread
+std::this_thread::yield();         // Hint scheduler to run another thread
+
+
+
+
+What is the purpose of std::condition_variable?
+✅ Correct Answer: B. To allow threads to wait efficiently until a condition becomes true.
+
+Explanation
+
+A std::condition_variable is used for thread synchronization.
+
+It allows one or more threads to sleep (wait) until another thread notifies them that some condition has become true.
+
+Instead of continuously checking a condition (busy waiting), a thread can efficiently wait.
+
+
+
+
+Function	Purpose
+join()	       Wait for another thread to finish
+detach()	Let a thread run independently
+sleep_for()	Sleep for a specific duration
+yield()	         Give up the current CPU time slice voluntarily
+
+
+
+
+What is deadlock?
+✅ Correct! A. Two or more threads wait indefinitely for resources held by each other.
+
+Explanation
+
+A deadlock occurs when two or more threads are waiting for each other to release resources, and none of them can proceed.
+
+
+
+
+
+Four Necessary Conditions for Deadlock (Very Important Interview Question)
+
+Remember Coffman's Conditions:
+
+✅ Mutual Exclusion – A resource can be held by only one thread.
+✅ Hold and Wait – A thread holds one resource while waiting for another.
+✅ No Preemption – Resources cannot be forcibly taken away.
+✅ Circular Wait – A circular chain of threads is waiting on each other.
+
+
+
+
+
+
+Function parameter	Thread argument
+void f(int)	std::thread(f, x)
+void f(int&)	std::thread(f, std::ref(x))
+void f(int*)	std::thread(f, &x)
+
+
+
+
+
+void f(int);      // Pass by value
+std::thread t1(f, x);          // ✅ OK
+
+void f(int&);
+std::thread t2(f, std::ref(x)); // ✅ OK
+
+void f(int&);
+std::thread t3(f, x);           // ❌ Compilation Error
+
+If any one of these conditions is prevented, deadlock cannot occur.
+
+
+
+What is the difference between std::lock_guard and std::unique_lock?
+std::unique_lock supports deferred locking, manual unlock/relock, timed locking, and works with std::condition_variable; std::lock_guard is a lightweight RAII lock with fewer features.
+
+Explanation
+std::lock_guard
+✅ Lightweight RAII wrapper.
+✅ Locks the mutex immediately.
+✅ Unlocks automatically when it goes out of scope.
+❌ Cannot unlock manually.
+❌ Cannot defer locking.
+❌ Cannot be moved.
+❌ Cannot be used with std::condition_variable::wait().
+Example:
+
+std::mutex m;
+
+void fun() {
+    std::lock_guard<std::mutex> lock(m);
+    // Critical section
+}
+std::unique_lock
+
+More flexible than lock_guard.
+
+Features:
+
+✅ Deferred locking
+✅ Manual lock() / unlock()
+✅ Try lock
+✅ Timed lock (with timed mutexes)
+✅ Movable
+✅ Required by std::condition_variable
+
+Example:
+
+std::mutex m;
+
+void fun() {
+    std::unique_lock<std::mutex> lock(m);
+
+    // Critical section
+
+    lock.unlock();
+
+    // Do some work without the mutex
+
+    lock.lock();
+
+    // Critical section again
+}
+
+
+
+
+
+
+What is the main difference between a data race and a race condition?
+A data race is a specific type of race condition involving unsynchronized concurrent access to the same memory (with at least one write), while a race condition is the broader concept where correctness depends on timing or execution order.
+
+Explanation
+1. Data Race (Specific Concept)
+
+A data race occurs when:
+
+Two or more threads access the same memory location.
+At least one access is a write.
+There is no synchronization (mutex, atomic, etc.).
+
+Example:
+
+int x = 0;
+
+void f() {
+    x++;      // Data race
+}
+Thread 1
+Read x = 5
+
+Thread 2
+Read x = 5
+
+Thread 1
+Write 6
+
+Thread 2
+Write 6
+
+Expected:
+
+7
+
+Actual:
+
+6
+
+This is undefined behavior in C++.
+
+2. Race Condition (General Concept)
+
+A race condition means the correctness of the program depends on the order or timing of events.
+
+Not every race condition is a data race.
+
+Example:
+
+if (flag)
+    process();
+
+If another thread changes flag at an unexpected time (even with proper synchronization), the program logic may still behave incorrectly depending on timing.
+
+Interview Definition
+
+Data Race → Unsynchronized access to shared memory with at least one write (undefined behavior).
+
+Race Condition → Program correctness depends on execution order or timing. It may or may not involve a data race.
+
+Quick Comparison
+Feature	Data Race	Race Condition
+Shared memory access	✅	Usually, but not always
+At least one write	✅	Not required
+Requires missing synchronization	✅	Not necessarily
+Undefined behavior in C++	✅	Not always
+Broader concept	❌	✅
+🎯 FAANG Interview Tip
+
+If an interviewer asks:
+
+Can you have a race condition without a data race?
+
+✅ Answer: Yes.
+
+Example:
+
+Two threads compete to process the same task.
+Accesses are protected by mutexes (so no data race).
+But whichever thread acquires the lock first changes the program's behavior (race condition).
+
+
+
+What is the main purpose of std::memory_order_relaxed in atomic operations?
+It performs atomic operations without ordering guarantees, improving performance when only atomicity is required.
+
+
+Explanation
+
+std::memory_order_relaxed provides:
+
+✅ Atomicity of the operation.
+❌ No ordering guarantees with respect to other memory operations.
+
+Example:
+
+std::atomic<int> counter{0};
+
+void worker() {
+    counter.fetch_add(1, std::memory_order_relaxed);
+}
+
+Here:
+
+Every increment is atomic.
+Threads will not corrupt counter.
+However, there is no synchronization with other memory accesses.
+Memory Order Comparison
+Memory Order	Atomic	Ordering Guarantee
+memory_order_relaxed	✅	❌ None
+memory_order_acquire	✅	✅ Acquire
+memory_order_release	✅	✅ Release
+memory_order_acq_rel	✅	✅ Acquire + Release
+memory_order_seq_cst	✅	✅ Strongest (default)
+When to use memory_order_relaxed
+
+Suitable for:
+
+Performance counters
+Statistics
+Telemetry
+Metrics where only the final atomic value matters
+
+Example:
+
+std::atomic<int> requests{0};
+
+void handle_request() {
+    requests.fetch_add(1, std::memory_order_relaxed);
+}
+
+The count is correct, and there is no need to synchronize other data.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
