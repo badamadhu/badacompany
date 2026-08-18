@@ -1,0 +1,126 @@
+// typecasting
+
+#include <iostream>
+using namespace std;
+
+class A
+{
+public:
+    virtual ~A() {}      // Required for dynamic_cast
+};
+
+class B : public A
+{
+public:
+    int p;
+};
+
+int main()
+{
+    // Upcasting using static_cast
+    A *pObj1 = static_cast<A*>(new B);
+
+    // Upcasting using dynamic_cast
+    A *pObj2 = dynamic_cast<A*>(new B);
+
+    // Downcasting using static_cast (Unsafe)
+    B *pObj3 = static_cast<B*>(new A);
+
+    // Downcasting using dynamic_cast (Safe)
+    B *pObj4 = dynamic_cast<B*>(new A);
+
+    cout << "pObj1 = " << pObj1 << endl;
+    cout << "pObj2 = " << pObj2 << endl;
+    cout << "pObj3 = " << pObj3 << endl;
+    cout << "pObj4 = " << pObj4 << endl;
+
+    // Undefined Behavior (Don't do this)
+    pObj3->p = 40;
+    cout << "pObj3->p = " << pObj3->p << endl;
+
+    // Safe check
+    if (pObj4)
+    {
+        pObj4->p = 50;
+        cout << "pObj4->p = " << pObj4->p << endl;
+    }
+    else
+    {
+        cout << "dynamic_cast failed (pObj4 is nullptr)" << endl;
+    }
+
+    delete pObj1;   // Deletes B object through A*
+    delete pObj2;   // Deletes B object through A*
+    delete pObj3;   // Technically deleting the A object; use after bad cast is already UB
+
+    return 0;
+}
+
+
+
+
+Memory Diagram
+1. A *pObj1 = static_cast<A*>(new B);
+      B Object
++----------------+
+| A Part         |
+|----------------|
+| int p          |
++----------------+
+        ^
+        |
+      A* (pObj1)
+
+✅ Safe (Upcasting)
+
+2. A *pObj2 = dynamic_cast<A*>(new B);
+      B Object
++----------------+
+| A Part         |
+|----------------|
+| int p          |
++----------------+
+        ^
+        |
+      A* (pObj2)
+
+✅ Safe (Upcasting)
+
+3. B *pObj3 = static_cast<B*>(new A);
+      A Object
++-----------+
+| A Part    |
++-----------+
+      ^
+      |
+     B*   (Wrong Cast)
+
+❌ static_cast does not check whether the object is actually a B.
+
+pObj3->p = 40;
+
+This is Undefined Behavior. It may:
+
+Print 40
+Print garbage
+Crash the program
+4. B *pObj4 = dynamic_cast<B*>(new A);
+      A Object
++-----------+
+| A Part    |
++-----------+
+
+dynamic_cast checks the object type
+        ↓
+     Not a B
+        ↓
+pObj4 = nullptr
+
+✅ Safe.
+
+if (pObj4)
+{
+    pObj4->p = 50;
+}
+
+The if condition is false, so no invalid access occurs.
